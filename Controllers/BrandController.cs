@@ -1,75 +1,85 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using web_db.Models;
+using web_db.Repository;
 
 namespace web_db.Controllers
 {
-    public class BrandController : Controller
+    [Route("api/[controller]")]
+    [ApiController]
+    public class BrandController : ControllerBase
     {
-        public ActionResult Index()
+        private readonly IBrandService _brandService;
+
+        public BrandController(IBrandService brandService)
         {
-            return View();
+            _brandService = brandService;
+        }
+        [Authorize(Roles = "Admin")]
+        [HttpGet]
+        public IActionResult GetAllBrands()
+        {
+            var brands = _brandService.GetAllBrands();
+            if (brands == null || !brands.Any())
+            {
+                return NotFound("No brands found.");
+            }
+            return Ok(brands);
         }
 
-        public ActionResult Details(int id)
+        [HttpGet("{id}")]
+        public IActionResult GetBrandById(int id)
         {
-            return View();
-        }
-
-        public ActionResult Create()
-        {
-            return View();
+            var brand = _brandService.GetBrandById(id);
+            if (brand == null)
+            {
+                return NotFound($"Brand with ID {id} not found.");
+            }
+            return Ok(brand);
         }
 
         [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult Create(IFormCollection collection)
+        public IActionResult CreateBrand([FromBody] Brand brand)
         {
-            try
+            if (brand == null)
             {
-                return RedirectToAction(nameof(Index));
+                return BadRequest("Brand data is required.");
             }
-            catch
-            {
-                return View();
-            }
+
+            _brandService.AddBrand(brand);
+            return CreatedAtAction(nameof(GetBrandById), new { id = brand.BrandId }, brand);
         }
 
-        public ActionResult Edit(int id)
+        [HttpPut("{id}")]
+        public IActionResult UpdateBrand(int id, [FromBody] Brand brand)
         {
-            return View();
+            if (id != brand.BrandId)
+            {
+                return BadRequest("Brand ID mismatch.");
+            }
+
+            var existingBrand = _brandService.GetBrandById(id);
+            if (existingBrand == null)
+            {
+                return NotFound($"Brand with ID {id} not found.");
+            }
+
+            _brandService.UpdateBrand(brand);
+            return NoContent();
         }
 
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult Edit(int id, IFormCollection collection)
+        [HttpDelete("{id}")]
+        public IActionResult DeleteBrand(int id)
         {
-            try
+            var brand = _brandService.GetBrandById(id);
+            if (brand == null)
             {
-                return RedirectToAction(nameof(Index));
+                return NotFound($"Brand with ID {id} not found.");
             }
-            catch
-            {
-                return View();
-            }
-        }
 
-        public ActionResult Delete(int id)
-        {
-            return View();
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult Delete(int id, IFormCollection collection)
-        {
-            try
-            {
-                return RedirectToAction(nameof(Index));
-            }
-            catch
-            {
-                return View();
-            }
+            _brandService.DeleteBrand(id);
+            return NoContent();
         }
     }
 }
